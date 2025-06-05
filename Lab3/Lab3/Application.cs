@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Text.Encodings.Web;
 
 namespace Lab3
 {
@@ -63,22 +64,22 @@ namespace Lab3
             var course = new Course
             {
                 Id = 1,
-                Name = "Основи C#",
-                Description = "Вивчення базових концепцій C#",
+                Name = "Basic C#",
+                Description = "Basic conceptions",
                 Tests = new List<Test>
                 {
                     new Test
                     {
-                        Title = "Базовий тест",
+                        Title = "Basic test",
                         Questions = new List<Question>
                         {
                             new Question
                             {
-                                Text = "Що таке клас у C#?",
+                                Text = "What is a class in C#?",
                                 AnswerOptions = new List<AnswerOption>
                                 {
-                                    new AnswerOption { Text = "Тип даних", IsCorrect = true },
-                                    new AnswerOption { Text = "Функція", IsCorrect = false }
+                                    new AnswerOption { Text = "Type of data", IsCorrect = true },
+                                    new AnswerOption { Text = "Function", IsCorrect = false }
                                 }
                             }
                         }
@@ -89,7 +90,7 @@ namespace Lab3
             var user = new User
             {
                 Id = 1,
-                Name = "Іван Петренко"
+                Name = "Ivan"
             };
 
             courses = new List<Course> { course };
@@ -120,37 +121,60 @@ namespace Lab3
 
         private void DeserializeData(string filePath)
         {
-            if (!File.Exists(filePath))
-            {
-                Console.WriteLine("Файл не знайдено!");
-                return;
-            }
-
-            string json = File.ReadAllText(filePath);
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
             try
             {
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
+                // 1. Читання JSON з файлу
+                string json = File.ReadAllText(filePath);
 
-                if (data.TryGetProperty("courses", out var coursesElement))
+                // 2. Десеріалізація
+                var options = new JsonSerializerOptions
                 {
-                    courses = JsonSerializer.Deserialize<List<Course>>(coursesElement.GetRawText(), options);
+                    PropertyNameCaseInsensitive = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                JsonDocument document = JsonDocument.Parse(json);
+                JsonElement root = document.RootElement;
+
+                // 3. Вилучення даних
+                if (root.TryGetProperty("courses", out JsonElement coursesElement))
+                {
+                    courses = JsonSerializer.Deserialize<List<Course>>(coursesElement, options);
+                    Console.WriteLine("\nУспішно завантажено курси:");
+                    foreach (var course in courses)
+                    {
+                        Console.WriteLine($"- {course.Name} (ID: {course.Id})");
+                    }
                 }
 
-                if (data.TryGetProperty("users", out var usersElement))
+                if (root.TryGetProperty("users", out JsonElement usersElement))
                 {
-                    users = JsonSerializer.Deserialize<List<User>>(usersElement.GetRawText(), options);
+                    users = JsonSerializer.Deserialize<List<User>>(usersElement, options);
+                    Console.WriteLine("\nУспішно завантажено користувачів:");
+                    foreach (var user in users)
+                    {
+                        Console.WriteLine($"- {user.Name} (ID: {user.Id})");
+                    }
                 }
 
-                Console.WriteLine("Дані успішно завантажено!");
+                // 4. Демонстрація структури через JsonDocument
+                Console.WriteLine("\nДемонстрація структури через JsonDocument:");
+                if (courses.Count > 0 && courses[0].Tests.Count > 0)
+                {
+                    Console.WriteLine($"Перший тест у першому курсі: {courses[0].Tests[0].Title}");
+                    if (courses[0].Tests[0].Questions.Count > 0)
+                    {
+                        Console.WriteLine($"Перше питання: {courses[0].Tests[0].Questions[0].Text}");
+                    }
+                }
             }
             catch (JsonException ex)
             {
-                Console.WriteLine($"Помилка при читанні JSON: {ex.Message}");
+                Console.WriteLine($"Помилка десеріалізації: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Неочікувана помилка: {ex.Message}");
             }
         }
 
